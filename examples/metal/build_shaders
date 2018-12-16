@@ -1,0 +1,6 @@
+#!/bin/bash
+# Simple script for compiling Metal shaders without xcode.
+
+xcrun -sdk macosx metal shaders.metal -o shaders.air
+xcrun -sdk macosx metallib shaders.air -o shaders.metallib
+rm shaders.air

@@ -1,0 +1,14 @@
+[package]
+name = "halcyon"
+version = "0.1.0"
+authors = ["Broch Stilley <brochington@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+winit = "0.18.0"
+core-foundation = "0.6.3"
+core-graphics = "0.17"
+cocoa = "0.18.4"
+metal = "0.13.0"
+objc = "0.2.5"
+objc-foundation = "0.1.1"
