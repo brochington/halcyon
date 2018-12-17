@@ -34,7 +34,3 @@ impl Default for Square2D {
     }
   }
 }
-
-pub trait AddSquare2D {
-  fn add(&mut self, square2D: Square2D) {}
-}

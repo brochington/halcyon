@@ -1,10 +1,8 @@
 use crate::geometry::Geometries;
 
-pub trait SceneAddable {}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Scene2D {
-  geometries: Vec<Geometries>
+  pub geometries: Vec<Geometries>
 }
 
 impl Scene2D {

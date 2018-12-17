@@ -1,7 +1,6 @@
-use crate::geometry::Geometries;
+use crate::scene_2d::Scene2D;
 
 #[derive(Debug, Default, Clone)]
 pub struct AppState {
-  pub playing: bool,
-  pub geometries: Vec<Geometries>
+  pub scenes: Vec<Scene2D>
 }

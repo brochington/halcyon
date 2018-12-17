@@ -1,13 +1,7 @@
-// extern crate winit;
-// extern crate metal;
-// extern crate cocoa;
-// extern crate core_graphics;
-// #[macro_use] extern crate objc;
-
 pub mod stage_config;
 pub mod stage;
 pub mod metal_stage;
-pub mod enums;
+pub mod engines;
 pub mod math;
 
 pub mod geometry;

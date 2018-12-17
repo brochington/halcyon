@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(Clone)]
 pub struct Store <S: Clone, A> {
   state: S,
   reducer: fn(&S, A) -> S,

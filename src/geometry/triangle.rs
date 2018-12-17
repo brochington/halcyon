@@ -1,14 +1,11 @@
-pub use crate::scene_2d::SceneAddable;
 pub use super::super::math::{Mat3, Vec2};
 pub use super::Geometries;
 
 #[derive(Debug, Clone)]
 pub struct Triangle2D {
-  points: Vec<Vec2>,
-  matrix: Mat3
+  pub points: Vec<Vec2>,
+  pub matrix: Mat3
 }
-
-impl SceneAddable for Triangle2D {}
 
 impl Triangle2D {
   pub fn new() -> Geometries {
@@ -34,8 +31,4 @@ impl Default for Triangle2D {
       matrix: Mat3::identity()
     }
   }
-}
-
-pub trait AddTriangle2D {
-  fn add(&mut self, triangle2D: Triangle2D) {}
 }
