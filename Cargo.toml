@@ -12,3 +12,5 @@ cocoa = "0.18.4"
 metal = "0.13.0"
 objc = "0.2.5"
 objc-foundation = "0.1.1"
+uuid = { version = "0.7", features = ["v4"] }
+image = "0.20.1"

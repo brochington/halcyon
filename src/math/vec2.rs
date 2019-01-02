@@ -14,7 +14,7 @@ impl Vec2 {
         }
     }
 
-    pub fn from(x: f64, y: f64) -> Vec2 {
+    pub fn new(x: f64, y: f64) -> Vec2 {
         Vec2 {
             x,
             y,
@@ -51,7 +51,6 @@ impl Add for Vec2 {
         }
     }
 }
-
 
 impl Sub for Vec2 {
     type Output = Vec2;
