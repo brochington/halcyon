@@ -8,7 +8,6 @@ use metal::*;
 use cocoa::base::id as cocoa_id;
 use cocoa::appkit::{ NSWindow, NSView };
 use std::mem;
-// use std::collections::HashMap;
 use core_graphics::geometry::CGSize;
 use objc::runtime::YES;
 
@@ -16,28 +15,11 @@ use crate::stages::metal_stage::metal_stage_config::MetalStageConfig;
 use crate::scene_2d::{ Scene2D };
 use crate::internal_actions::{ InternalActions, root_reducer };
 use crate::utils::state_management::{ Store };
-// use crate::utils::color::{ Color, get_rgb };
 use crate::utils::helpers::{ cartesian_to_clip };
 use crate::internal_state::InternalState;
 use crate::primitive_2d::Primitives2D;
 use crate::texture::{ Textures };
 use crate::math::{Mat3, Vec2};
-
-// fn prepare_pipeline_state(device: &DeviceRef, library: &LibraryRef) -> RenderPipelineState {
-//   let vert = library.get_function("triangle_vertex", None).unwrap();
-//   let frag = library.get_function("triangle_fragment", None).unwrap();
-
-//   let pipeline_state_descriptor = RenderPipelineDescriptor::new();
-//   pipeline_state_descriptor.set_vertex_function(Some(&vert));
-//   pipeline_state_descriptor.set_fragment_function(Some(&frag));
-//   pipeline_state_descriptor
-//     .color_attachments()
-//     .object_at(0)
-//     .unwrap()
-//     .set_pixel_format(MTLPixelFormat::BGRA8Unorm);
-
-//   device.new_render_pipeline_state(&pipeline_state_descriptor).unwrap()
-// }
 
 /* Compiles Metal library from shader source code path */
 fn get_library_from_source(device: &Device, shader_path: &str) -> Library {
@@ -357,7 +339,7 @@ fn create_buffer(device: &Device, vertex_data: Vec<f32>) -> Buffer {
   )
 }
 
-// update buffer goes here
+// TODO: update buffer goes here
 
 fn translate_vertices(transform: Mat3, vertices: &Vec<Vec2>) -> Vec<Vec2> {
   let Vec2 {x: trans_x, y: trans_y } = transform.get_translation();
@@ -370,8 +352,8 @@ fn translate_vertices(transform: Mat3, vertices: &Vec<Vec2>) -> Vec<Vec2> {
     .collect::<Vec<Vec2>>()
 }
 
+// vertext = x | y | z | mode | r | g | b | a | texCoordX | texCoordY
 fn get_vertex_data_from_scene(scene: &Scene2D, window_width: f64, window_height: f64) -> Vec<f32> {
-
   let primitives = &scene.primitives;
   let textures = &scene.textures;
   let mut vertex_data = vec![];
@@ -379,7 +361,6 @@ fn get_vertex_data_from_scene(scene: &Scene2D, window_width: f64, window_height:
   for primitive in primitives {
     match primitive {
       Primitives2D::Triangle2D(triangle) => {
-        // let translation = triangle.transform.get_translation();
         let translated_vertices = translate_vertices(triangle.transform, &triangle.vertices);
         let vertices_in_clip_space = cartesian_to_clip(window_width, window_height, &translated_vertices);
 
@@ -388,12 +369,20 @@ fn get_vertex_data_from_scene(scene: &Scene2D, window_width: f64, window_height:
             Textures::ColorTexture(color_texture) => {
               vertices_in_clip_space
                 .iter()
-                .for_each(|coord| {
+                .zip(color_texture.get_colors().iter())
+                .for_each(|(coord, color)| {
+                  let [r, g, b] = color.get_rgb();
                   vertex_data.extend(vec![
-                    coord.x as f32,
-                    coord.y as f32,
-                    // left off here....
-                    // need to fill in the buffer with color and texture coord data.
+                    coord.x as f32, // x
+                    coord.y as f32, // y
+                    0.0, // z, not currently used
+                    0.0,  // mode "0" is rgba
+                    r as f32,
+                    g as f32,
+                    b as f32,
+                    1.0, // alpha
+                    0.0, // texCoordX, 
+                    0.0 // texCoordY
                   ])
                 })
             },
@@ -404,7 +393,6 @@ fn get_vertex_data_from_scene(scene: &Scene2D, window_width: f64, window_height:
       Primitives2D::Rectangle2D(rectangle) => {}
     }
   }
-
 
   vertex_data
 }
@@ -454,8 +442,11 @@ pub fn play(stage: MetalStage, mut cb: Box<FnMut() -> Scene2D>) {
 
   while playing {
     let current_state = i_store.get_state();
+    let current_playing = current_state.playing;
+    let current_width = current_state.width;
+    let current_height = current_state.height;
 
-    if !current_state.playing {
+    if !current_playing {
       playing = false;
     }
 
@@ -471,7 +462,10 @@ pub fn play(stage: MetalStage, mut cb: Box<FnMut() -> Scene2D>) {
 
     let current_scene = cb();
     
-    let (vertex_data, len) = process_scene(&device, current_scene);
+    // let (vertex_data, len) = process_scene(&device, current_scene);
+    let vertex_data = get_vertex_data_from_scene(&current_scene, current_width, current_height);
+    let vertex_data_length = vertex_data.len() as u64;
+    let vertex_buffer = create_buffer(&device, vertex_data);
 
     if let Some(drawable) = layer.next_drawable() {
       // create render pass descriptor
@@ -483,9 +477,9 @@ pub fn play(stage: MetalStage, mut cb: Box<FnMut() -> Scene2D>) {
       // Create a Render Command Encoder
       let encoder = command_buffer.new_render_command_encoder(&render_pass_descriptor);
       encoder.set_render_pipeline_state(&pipeline_state);
-      encoder.set_vertex_buffer(0, Some(&vertex_data), 0);
-      // encoder.set_vertex_buffer(0, Some(&vbuf), 0);
-      encoder.draw_primitives(MTLPrimitiveType::Triangle, 0, len / 5);
+      encoder.set_vertex_buffer(0, Some(&vertex_buffer), 0);
+      // TODO: maybe update this to use drawIndexedPrimitives to save some memory.
+      encoder.draw_primitives(MTLPrimitiveType::Triangle, 0, vertex_data_length / 10);
       encoder.end_encoding();
 
       // create_encoders(&device, &library, current_scene, &command_buffer, &render_pass_descriptor);
