@@ -1,6 +1,5 @@
 extern crate halcyon;
 extern crate winit;
-extern crate rand;
 extern crate image;
 
 pub mod app_state;

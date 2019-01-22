@@ -16,6 +16,7 @@ use crate::scene_2d::{ Scene2D };
 use crate::internal_actions::{ InternalActions, root_reducer };
 use crate::utils::state_management::{ Store };
 use crate::utils::helpers::{ cartesian_to_clip };
+use crate::utils::color::{ Color };
 use crate::internal_state::InternalState;
 use crate::primitive_2d::Primitives2D;
 use crate::texture::{ Textures };
@@ -52,11 +53,11 @@ fn process_scene(device: &Device, scene: Scene2D) -> (Buffer, u64) {
   for prim in prims {
     match prim {
       Primitives2D::Triangle2D(triangle) => {
-        let trans = triangle.transform.get_translation();
+        let [trans_x, trans_y ] = triangle.transform.get_translation();
         let translated_points = vec![
-          Vec2::new(triangle.vertices[0].x + trans.x, triangle.vertices[0].y + trans.y),
-          Vec2::new(triangle.vertices[1].x + trans.x, triangle.vertices[1].y + trans.y),
-          Vec2::new(triangle.vertices[2].x + trans.x, triangle.vertices[2].y + trans.y)
+          Vec2::new(triangle.vertices[0].x + trans_x, triangle.vertices[0].y + trans_y),
+          Vec2::new(triangle.vertices[1].x + trans_x, triangle.vertices[1].y + trans_y),
+          Vec2::new(triangle.vertices[2].x + trans_x, triangle.vertices[2].y + trans_y)
         ];
         let clip_points = cartesian_to_clip(1000.0, 1000.0, &translated_points);
 
@@ -68,7 +69,7 @@ fn process_scene(device: &Device, scene: Scene2D) -> (Buffer, u64) {
                 .iter()
                 .zip(color_texture.get_colors().iter())
                 .for_each(|(coord, color)| {
-                  let [r, g, b] = color.get_rgb();
+                  let [r, g, b ] = color.get_rgb();
                   vertex_data.extend(vec![
                     coord.x as f32, 
                     coord.y as f32,
@@ -83,7 +84,7 @@ fn process_scene(device: &Device, scene: Scene2D) -> (Buffer, u64) {
         }
       },
       Primitives2D::Rectangle2D(rectangle) => {
-        let Vec2 { x: trans_x, y: trans_y } = rectangle.transform.get_translation();
+        let [ trans_x, trans_y ] = rectangle.transform.get_translation();
         let vertices = vec![
           // first triangle
           Vec2::new(trans_x, trans_y),
@@ -342,7 +343,7 @@ fn create_buffer(device: &Device, vertex_data: Vec<f32>) -> Buffer {
 // TODO: update buffer goes here
 
 fn translate_vertices(transform: Mat3, vertices: &Vec<Vec2>) -> Vec<Vec2> {
-  let Vec2 {x: trans_x, y: trans_y } = transform.get_translation();
+  let [ trans_x, trans_y ] = transform.get_translation();
 
   vertices
     .iter()
@@ -350,6 +351,19 @@ fn translate_vertices(transform: Mat3, vertices: &Vec<Vec2>) -> Vec<Vec2> {
       Vec2::new(x + trans_x, y + trans_y)
     })
     .collect::<Vec<Vec2>>()
+}
+
+fn get_rect_vertices(transform: Mat3, width: f64, height: f64) -> Vec<Vec2> {
+  let [ trans_x, trans_y ] = transform.get_translation();
+
+  vec![
+    Vec2::new(trans_x, trans_y + height),
+    Vec2::new(trans_x, trans_y),
+    Vec2::new(trans_x + width, trans_y),
+    Vec2::new(trans_x + width, trans_y),
+    Vec2::new(trans_x + width, trans_y + height),
+    Vec2::new(trans_x, trans_y + height),
+  ]
 }
 
 // vertext = x | y | z | mode | r | g | b | a | texCoordX | texCoordY
@@ -390,7 +404,58 @@ fn get_vertex_data_from_scene(scene: &Scene2D, window_width: f64, window_height:
           }
         }
       },
-      Primitives2D::Rectangle2D(rectangle) => {}
+      Primitives2D::Rectangle2D(rectangle) => {
+        let translated_vertices = get_rect_vertices(rectangle.transform, rectangle.width, rectangle.height);
+        let vertices_in_clip_space = cartesian_to_clip(window_width, window_height, &translated_vertices);
+        // println!("v {:#?}", vertices_in_clip_space);
+        if let Some(texture) = textures.get(&rectangle.texture_id) {
+          match texture { 
+            Textures::ColorTexture(color_texture) => {
+              vertices_in_clip_space
+                .iter()
+                .zip(color_texture.get_colors().iter())
+                .for_each(|(coord, color)| {
+                  // println!("color {:#?}", color);
+                  let [r, g, b] = color.get_rgb();
+                  vertex_data.extend(vec![
+                    coord.x as f32, // x
+                    coord.y as f32, // y
+                    0.0, // z, not currently used
+                    0.0,  // mode "0" is rgba
+                    r as f32,
+                    g as f32,
+                    b as f32,
+                    1.0, // alpha
+                    0.0, // texCoordX, 
+                    0.0 // texCoordY
+                  ])
+                }
+              )
+            },
+            Textures::ImageTexture(image_texture) => {
+              vertices_in_clip_space
+                .iter()
+                .zip(rectangle.uv_map.iter())
+                .for_each(|(coord, uv)| {
+                  vertex_data.extend(vec![
+                    coord.x as f32,
+                    coord.y as f32,
+                    0.0, // z, not currently used
+                    1.0, // mode "1" is uv texture mapping
+                    0.0, // r, not used
+                    0.0, // g, not used
+                    0.0, // b, not used
+                    1.0, // alpha, not used
+                    uv.x as f32,
+                    uv.y as f32
+                  ])
+                })
+
+            },
+            _ => ()
+          }
+        }
+      }
     }
   }
 
@@ -461,6 +526,9 @@ pub fn play(stage: MetalStage, mut cb: Box<FnMut() -> Scene2D>) {
     });
 
     let current_scene = cb();
+
+    // handle textures
+    
     
     // let (vertex_data, len) = process_scene(&device, current_scene);
     let vertex_data = get_vertex_data_from_scene(&current_scene, current_width, current_height);

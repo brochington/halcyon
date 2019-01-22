@@ -18,7 +18,7 @@ impl Mat3 {
     mat3
   }
 
-  pub fn get_translation(&self) -> Vec2 {
-    Vec2::new(self.values[6], self.values[7])
+  pub fn get_translation(&self) -> [f64; 2] {
+    [ self.values[6], self.values[7] ]
   }
 }
